@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Sep 30 04:58:19 2022
+
+@author: alyion
+"""
+import pandas as pd
+import numpy as np
+import coreapi
+import os
+
+filepath = "/Users/alyion/Desktop/TFBS_LSY/" #Cr跑完後hip儲存位置，也是合併後回傳的位置
+
+if os.path.exists(filepath + "❖TFBS_SNPs.csv"):
+    TFBS_df = pd.read_csv(filepath + "❖TFBS_SNPs.csv")
+else:
+    TFBS_df = pd.DataFrame(columns=['Chrom', 'Position', 'Name', 'Ale.1', 'Ale.2', 'Ale.3',
+           'Ale.4', 'Freq.1', 'Freq.2', 'Freq.3', 'Freq.4', 'Seq.1', 'Seq.2',
+           'Seq.3', 'Seq.4', 'call', 'VarType', 'n.Ale', 'Seq1.bind', 'Seq2.bind',
+           'Seq3.bind', 'Seq4.bind', 'Included.bind.500', 'diff.bind', 'MAF',
+           'Coding', 'Chip', 'gene', 'gene.num', 'gene.start', 'gene.end',
+           'coding.reg', 'POS','TF']) 
+    
+    for filename in os.listdir(filepath):
+        tf_name = filename.replace("_Chip.csv","")
+        df = pd.read_csv(filepath + filename)
+        if df.empty:
+            print(f"No SNPs on {tf_name}'s binding site!")
+        else:
+            df["TF"] = tf_name
+            TFBS_df = pd.concat([TFBS_df, df])
+    print(TFBS_df.head(5))
+    TFBS_df = TFBS_df.reset_index()
+    TFBS_df.index = TFBS_df.index + 1
+    TFBS_df = TFBS_df[['TF', 'Chrom', 'Position', 'Name', 'Ale.1', 'Ale.2', 'Ale.3',
+           'Ale.4', 'Freq.1', 'Freq.2', 'Freq.3', 'Freq.4', 'Seq.1', 'Seq.2',
+           'Seq.3', 'Seq.4', 'call', 'VarType', 'n.Ale', 'Seq1.bind', 'Seq2.bind',
+           'Seq3.bind', 'Seq4.bind', 'Included.bind.500', 'diff.bind', 'MAF',
+           'Coding', 'Chip', 'gene', 'gene.num', 'gene.start', 'gene.end',
+           'coding.reg', 'POS']]
+    
+    TFBS_df.to_csv(filepath + "❖TFBS_SNPs.csv")
+
+snp_list = []
+for snpcolumn in TFBS_df["Name"].tolist():
+    for s in range(len(snpcolumn.split(","))):
+        snp_list.append(snpcolumn.split(",")[s])
+snp_list = list(set(snp_list))
+
+print("There are {} SNPs, listed below:".format(len(snp_list)))
+print(snp_list)
+
+def get_Gtex(snpID):
+    X = np.empty(shape=[0, 3])
+    client = coreapi.Client()
+    result = client.get("https://gtexportal.org/rest/v1/association/singleTissueEqtl?snpId="+snpID)
+    for i in range(len(result["singleTissueEqtl"])):
+        pvalue = result["singleTissueEqtl"][i]['pValue']
+        tissue = result["singleTissueEqtl"][i]['tissueSiteDetailId']
+        nes = result["singleTissueEqtl"][i]['nes']
+        inf = np.array([[tissue, nes, pvalue]])
+        X = np.append(X, inf, axis=0)
+    return X
+
+get_Gtex("rs1348898")
+
+All_array = np.empty(shape=[0, 4])
+i = len(snp_list)
+j = 0
+for snpID in snp_list:
+    if get_Gtex(snpID).size == 0:
+        print(f"No GTEx result for {snpID}!")
+    else:
+        info_array = get_Gtex(snpID)
+        info_array = np.insert(info_array, 0, snpID, axis = 1)
+        All_array = np.append(All_array, info_array, axis = 0)
+        print(info_array)
+        j += 1
+    i -= 1
+    if i != 0:
+        print(f'{i} SNPs left!')
+    else:
+        print(f'Scraping done, {j} SNPs found GTEx eQTL data!!')
+        
+GTEx_df = pd.DataFrame(All_array,columns = ["SNP", "Tissue", "NES", "p-value"])
+GTEx_df.to_csv(filepath + "❖SNPs_GTEx.csv", index = False)
+
