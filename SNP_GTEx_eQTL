@@ -44,8 +44,11 @@ else:
 
 snp_list = []
 for snpcolumn in TFBS_df["Name"].tolist():
-    for s in range(len(snpcolumn.split(","))):
-        snp_list.append(snpcolumn.split(",")[s])
+    try:
+        for s in range(len(snpcolumn.split(","))):
+            snp_list.append(snpcolumn.split(",")[s])
+    except:
+        pass
 snp_list = list(set(snp_list))
 
 print("There are {} SNPs, listed below:".format(len(snp_list)))
