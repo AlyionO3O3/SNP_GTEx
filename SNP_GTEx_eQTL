@@ -10,7 +10,7 @@ import numpy as np
 import coreapi
 import os
 
-filepath = "/Users/alyion/Desktop/TFBS_LSY/" #Cr跑完後hip儲存位置，也是合併後回傳的位置
+filepath = "/Users/alyion/Desktop/TFBS_LSY/" #r跑完後Chip儲存位置，也是合併後回傳的位置
 
 if os.path.exists(filepath + "❖TFBS_SNPs.csv"):
     TFBS_df = pd.read_csv(filepath + "❖TFBS_SNPs.csv")
